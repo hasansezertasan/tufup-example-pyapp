@@ -1,0 +1,350 @@
+[env]
+_.file = ".env"
+ENV = "development"
+APP_DEBUG = true
+APP_NAME = "application"
+APP_SPEC = "{{ [config_root] | concat(with='main.spec') | join_path }}"
+APP_VERSION = "{{ get_env(name='APP_VERSION', default='0.0.0') }}"
+KEY_NAME = "application_key"
+TEMP_DIR = "{{ [config_root] | concat(with='tmp') | join_path }}"
+DATA_DIR = "{{ [env.TEMP_DIR] | concat(with='Library') | join_path }}"
+DATA_APP_DIR = "{{ [env.DATA_DIR] | concat(with=env.APP_NAME) | join_path }}"
+UPDATE_CACHE_DIR = "{{ [env.DATA_APP_DIR] | concat(with='update_cache') | join_path }}"
+TARGET_DIR = "{{ [env.UPDATE_CACHE_DIR] | concat(with='targets') | join_path }}"
+METADATA_DIR = "{{ [env.UPDATE_CACHE_DIR] | concat(with='metadata') | join_path }}"
+TRUSTED_ROOT_DST = "{{ [env.METADATA_DIR] | concat(with='root.json') | join_path }}"
+PROGRAMS_DIR = "{{ [env.TEMP_DIR] | concat(with='Applications') | join_path }}"
+INSTALL_DIR = "{{ [env.PROGRAMS_DIR] | concat(with=env.APP_NAME) | join_path }}"
+SERVER_DIR = "{{ [env.TEMP_DIR] | concat(with='server') | join_path }}"
+SERVER_KEYS_DIR = "{{ [env.SERVER_DIR] | concat(with='keystore') | join_path }}"
+SERVER_REPO_DIR = "{{ [env.SERVER_DIR] | concat(with='repository') | join_path }}"
+SERVER_TARGET_DIR = "{{ [env.SERVER_REPO_DIR] | concat(with='targets') | join_path }}"
+SERVER_METADATA_DIR = "{{ [env.SERVER_REPO_DIR] | concat(with='metadata') | join_path }}"
+TRUSTED_ROOT_SRC = "{{ [env.SERVER_METADATA_DIR] | concat(with='root.json') | join_path }}"
+PACKAGE_DIST_DIR = "{{ [env.TEMP_DIR] | concat(with='package') | concat(with='dist') | join_path }}"
+PYAPP_BUILD_DIR = "{{ [env.TEMP_DIR] | concat(with='pyapp') | concat(with='build') | join_path }}"
+PYINSTALLER_DIST_DIR = "{{ [env.TEMP_DIR] | concat(with='pyinstaller') | concat(with='dist') | join_path }}"
+PYINSTALLER_BUILD_DIR = "{{ [env.TEMP_DIR] | concat(with='pyinstaller') | concat(with='build') | join_path }}"
+INSTALL_DIR_MOCK_APP = "{{ [env.INSTALL_DIR] | concat(with='main') | join_path }}"
+# VCS_TAG = """{{ exec(command='git describe --tags --abbrev=0 2>/dev/null || echo "No tags found"') }}"""
+
+
+[tools]
+action-validator = "latest"
+actionlint = "latest"
+markdownlint-cli2 = "latest"
+ruff = "latest"
+taplo = "latest"
+typos = "latest"
+yamlfmt = "latest"
+yamllint = "latest"
+uv = "latest"
+cosign = "latest"
+hk = "latest"
+pkl = "latest"
+
+
+[hooks]
+preinstall = "echo 'I am about to install tools'"
+postinstall = "uv sync --all-groups --all-extras --reinstall"
+
+
+[tasks.prepare]
+description = "Prepare the build environment"
+shell = "bash -c"
+run = """
+dirs="
+$TEMP_DIR
+$DATA_DIR
+$UPDATE_CACHE_DIR
+$TARGET_DIR
+$METADATA_DIR
+$PROGRAMS_DIR
+$INSTALL_DIR
+$SERVER_DIR
+$SERVER_KEYS_DIR
+$SERVER_REPO_DIR
+$SERVER_TARGET_DIR
+$SERVER_METADATA_DIR
+$PACKAGE_DIST_DIR
+$PYAPP_BUILD_DIR
+$PYINSTALLER_DIST_DIR
+$PYINSTALLER_BUILD_DIR
+"
+for dir in $dirs; do
+    echo "Creating directory: $dir"
+    mkdir -p "$dir"
+done
+"""
+
+
+[tasks."build:pyinstaller"]
+description = "Build the Python application"
+depends = ["repo:sync-trusted-root"]
+shell = "bash -c"
+run = """
+if [ ! -f $APP_SPEC ]; then
+    echo "$APP_SPEC file not found. Please ensure it exists in the current directory."
+    uv run pyinstaller --clean --noconfirm --distpath $PYINSTALLER_DIST_DIR --workpath $PYINSTALLER_BUILD_DIR --add-data "$TRUSTED_ROOT_SRC:." --copy-metadata "application" --name main main.py
+else
+    echo "Using existing $APP_SPEC file"
+    uv run pyinstaller --clean --noconfirm --distpath $PYINSTALLER_DIST_DIR --workpath $PYINSTALLER_BUILD_DIR $APP_SPEC
+fi
+"""
+
+
+[tasks."build:check"]
+description = "Check the build"
+shell = "bash -c"
+run = "$INSTALL_DIR_MOCK_APP version"
+
+
+[tasks."build:verify"]
+description = "Verify the build"
+shell = "bash -c"
+run = """
+output="$("$INSTALL_DIR_MOCK_APP" version)"
+pattern="Application Version $APP_VERSION"
+if echo "$output" | grep -q "$pattern"; then
+    echo "Success: $pattern found"
+else
+    echo "Fail: $pattern not found in:"
+    echo "$output"
+    exit 1
+fi
+"""
+
+
+[tasks."build:clean"]
+description = "Clean the build artifacts"
+run = """
+rm -rf "$TEMP_DIR"
+rm -rf .mypy_cache
+rm -rf .ruff_cache
+rm -rf __pycache__
+rm .tufup-repo-config
+"""
+
+
+[tasks."repo:init"]
+description = "Initialize the Tufup Repository for the application"
+shell = "bash -c"
+run = "uv run manager repo-init"
+# uv run tufup init
+
+
+[tasks."repo:add"]
+description = "Add Application Bundle to the repository"
+run = "uv run manager repo-add-bundle --bundle-dist-dir $PYINSTALLER_DIST_DIR"
+# uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR/main $SERVER_KEYS_DIR
+
+
+[tasks."repo:sync-trusted-root"]
+description = "Copy the trusted root file to the metadata directory"
+shell = "bash -c"
+run = """
+if [ ! -f "$TRUSTED_ROOT_DST" ]; then
+    echo "Copying $TRUSTED_ROOT_SRC to $TRUSTED_ROOT_DST"
+    cp "$TRUSTED_ROOT_SRC" "$TRUSTED_ROOT_DST"
+else
+    echo "$TRUSTED_ROOT_DST already exists, skipping copy"
+fi
+"""
+
+[tasks."repo:serve"]
+description = "Run the HTTP server"
+shell = "bash -c"
+run = "uv run python -m http.server -d $SERVER_REPO_DIR & sleep 5"
+
+
+[tasks."mock:install"]
+description = "Install mock application"
+env = { ARCHIVE_DIR = "{{ [env.SERVER_TARGET_DIR] | concat(with=env.APP_NAME ~ '-' ~ env.APP_VERSION ~ '.tar.gz') | join_path }}" }
+shell = "bash -c"
+run = """
+if [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    echo "Converting paths to Windows format"
+    ARCHIVE_DIR=$(cygpath "$ARCHIVE_DIR")
+    INSTALL_DIR=$(cygpath "$INSTALL_DIR")
+    TARGET_DIR=$(cygpath "$TARGET_DIR")
+fi
+echo "Installing from $ARCHIVE_DIR"
+tar -tzf $ARCHIVE_DIR
+tar -xzf $ARCHIVE_DIR -C $INSTALL_DIR
+ls -l "$INSTALL_DIR"
+cp "$ARCHIVE_DIR" "$TARGET_DIR"
+"""
+
+
+[tasks.update-cycle]
+description = "Run the update cycle for the application in the development environment"
+run = """
+#!/usr/bin/env bash
+echo "Set up the build environment"
+mise run prepare
+
+echo "Initialize Repository"
+mise run repo:init
+
+export "APP_VERSION=1.0.0"
+echo "Mock develop $APP_VERSION"
+uv run hatch version $APP_VERSION
+uv sync --reinstall-package application
+echo "Create $APP_VERSION bundle"
+mise run build:pyinstaller
+echo "Add $APP_VERSION to the repository"
+mise run repo:add
+echo "Mock install $APP_VERSION"
+mise run mock:install
+echo "Verify $APP_VERSION installation"
+mise run build:verify
+
+export "APP_VERSION=2.0.0"
+echo "Mock develop $APP_VERSION"
+uv run hatch version $APP_VERSION
+uv sync --reinstall-package application
+echo "Create $APP_VERSION bundle"
+mise run build:pyinstaller
+echo "Add $APP_VERSION to the repository"
+mise run repo:add
+echo "Run update server and update the application"
+mise run repo:serve
+mise run build:check
+echo "Verify $APP_VERSION installation"
+mise run build:verify
+
+export "APP_VERSION=3.0.0"
+export "PYAPP_PROJECT_NAME=$APP_NAME"
+export "PYAPP_PROJECT_VERSION=$APP_VERSION"
+export "PYAPP_IS_GUI=0"
+export "PYAPP_PROJECT_PATH=$PACKAGE_DIST_DIR/$PYAPP_PROJECT_NAME-$PYAPP_PROJECT_VERSION-py3-none-any.whl"
+echo "Mock develop $APP_VERSION"
+uv run hatch version $APP_VERSION
+uv sync --reinstall-package application
+echo "Create $APP_VERSION Wheel"
+uv build --wheel --out-dir $PACKAGE_DIST_DIR
+echo "Create $APP_VERSION Bundle"
+cargo install pyapp --force --root $PYAPP_BUILD_DIR
+mv $PYAPP_BUILD_DIR/bin/pyapp $PYAPP_BUILD_DIR/bin/main
+echo "Add $APP_VERSION to the repository"
+uv run manager repo-add-bundle --bundle-dist-dir $PYAPP_BUILD_DIR
+echo "Run update server and update the application"
+mise run repo:serve
+mise run build:check
+echo "Verify $APP_VERSION installation"
+mise run build:verify
+
+export "APP_VERSION=4.0.0"
+export "PYAPP_PROJECT_NAME=$APP_NAME"
+export "PYAPP_PROJECT_VERSION=$APP_VERSION"
+export "PYAPP_IS_GUI=0"
+export "PYAPP_PROJECT_PATH=$PACKAGE_DIST_DIR/$PYAPP_PROJECT_NAME-$PYAPP_PROJECT_VERSION-py3-none-any.whl"
+echo "Mock develop $APP_VERSION"
+uv run hatch version $APP_VERSION
+uv sync --reinstall-package application
+echo "Create $APP_VERSION Wheel"
+uv build --wheel --out-dir $PACKAGE_DIST_DIR
+echo "Create $APP_VERSION Bundle"
+cargo install pyapp --force --root $PYAPP_BUILD_DIR
+mv $PYAPP_BUILD_DIR/bin/pyapp $PYAPP_BUILD_DIR/bin/main
+echo "Add $APP_VERSION to the repository"
+uv run manager repo-add-bundle --bundle-dist-dir $PYAPP_BUILD_DIR
+echo "Run update server and update the application"
+mise run repo:serve
+mise run build:check
+echo "Verify $APP_VERSION installation"
+mise run build:verify
+
+echo "Clean the build artifacts"
+mise run build:clean
+"""
+
+
+[tasks."lint:ruff"]
+description = "Run ruff linter"
+hide = true
+run = """
+#!/usr/bin/env bash
+if [ -n "$GITHUB_ENV" ]; then
+    mise exec ruff -- ruff check --output-format=github .
+else
+    mise exec ruff -- ruff check .
+fi
+"""
+
+
+[tasks."lint:yamllint"]
+description = "Run yamllint"
+hide = true
+run = "mise exec yamllint -- yamllint ."
+
+[tasks."lint:actionlint"]
+description = "Run actionlint"
+hide = true
+run = "mise exec actionlint -- actionlint"
+
+[tasks."lint:action-validator"]
+description = "Run action-validator"
+hide = true
+run = "mise exec action-validator -- action-validator"
+
+[tasks."lint:markdownlint-cli2"]
+description = "Run markdownlint-cli2"
+hide = true
+run = "mise exec markdownlint-cli2 -- markdownlint-cli2 ."
+
+[tasks."lint:taplo"]
+description = "Run taplo"
+hide = true
+run = "mise exec taplo -- taplo lint ."
+
+[tasks."lint:typos"]
+description = "Run typos"
+hide = true
+run = "mise exec typos -- typos ."
+
+
+[tasks.lint]
+description = "Linting"
+depends = [
+  "lint:ruff",
+  "lint:yamllint",
+  "lint:actionlint",
+  "lint:action-validator",
+  "lint:markdownlint-cli2",
+  "lint:taplo",
+  "lint:typos",
+]
+
+[tasks."format:self"]
+description = "Run mise format"
+hide = true
+run = "mise fmt"
+
+[tasks."format:ruff"]
+description = "Run ruff formatter"
+hide = true
+run = "mise exec ruff -- ruff format ."
+
+[tasks."format:yamlfmt"]
+description = "Run yamlfmt formatter"
+hide = true
+run = "mise exec yamlfmt -- yamlfmt ."
+
+[tasks."format:taplo"]
+description = "Run taplo formatter"
+hide = true
+run = "mise exec taplo -- taplo format ."
+
+
+[tasks.format]
+description = "Run the formatters"
+depends = ["format:self", "format:ruff", "format:yamlfmt", "format:taplo"]
+
+[tasks.ci]
+description = "Run the CI tasks"
+depends = ["lint", "format"]
+
+[settings]
+idiomatic_version_file_enable_tools = []
+# experimental = true

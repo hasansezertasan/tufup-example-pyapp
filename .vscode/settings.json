@@ -1,0 +1,25 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.ruby-lsp": true,
+        "**/.history": true,
+        "**/.lh": true,
+        "**/.venv": true,
+        "**/desktop.ini": true,
+        "**/.pytest_cache": true,
+        "**/.ruff_cache": true,
+        "**/.mypy_cache": true,
+        "**/*.rpyc": true,
+        "**/*.rpa": true,
+        "**/*.rpymc": true,
+        "**/cache/": true,
+        "**/.trunk/*actions/": true,
+        "**/.trunk/*logs/": true,
+        "**/.trunk/*notifications/": true,
+        "**/.trunk/*out/": true,
+        "**/.trunk/*plugins/": true
+    }
+}
