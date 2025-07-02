@@ -12,9 +12,10 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             platform: windows
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            platform: macos
+          # Disable x86_64-apple-darwin for now.
+          # - os: macos-latest
+          #   target: x86_64-apple-darwin
+          #   platform: macos
           - os: macos-latest
             target: aarch64-apple-darwin
             platform: macos
@@ -83,24 +84,24 @@ jobs:
       - name: Verify v2.0.0 installation
         shell: bash
         run: mise run build:verify
-      # - name: Mock develop v3.0.0
-      #   shell: bash
-      #   run: |
-      #     export APP_VERSION=3.0.0
-      #     echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
-      #     uv run hatch version $APP_VERSION
-      #     uv sync --reinstall-package application
-      # - name: Create v3.0.0 bundle
-      #   shell: bash
-      #   run: mise run build:pyinstaller
-      # - name: Add v3.0.0 to the repository
-      #   shell: bash
-      #   run: mise run repo:add
-      # - name: Run update server and update from v1.0.0 to v3.0.0
-      #   shell: bash
-      #   run: |
-      #     mise run repo:serve
-      #     mise run build:check
-      # - name: Verify v3.0.0 installation
-      #   shell: bash
-      #   run: mise run build:verify
+    # - name: Mock develop v3.0.0
+    #   shell: bash
+    #   run: |
+    #     export APP_VERSION=3.0.0
+    #     echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+    #     uv run hatch version $APP_VERSION
+    #     uv sync --reinstall-package application
+    # - name: Create v3.0.0 bundle
+    #   shell: bash
+    #   run: mise run build:pyinstaller
+    # - name: Add v3.0.0 to the repository
+    #   shell: bash
+    #   run: mise run repo:add
+    # - name: Run update server and update from v1.0.0 to v3.0.0
+    #   shell: bash
+    #   run: |
+    #     mise run repo:serve
+    #     mise run build:check
+    # - name: Verify v3.0.0 installation
+    #   shell: bash
+    #   run: mise run build:verify

@@ -1,0 +1,4 @@
+{
+    "metadata_base_url": "http://localhost:8000/metadata/",
+    "target_base_url": "http://localhost:8000/targets/"
+}

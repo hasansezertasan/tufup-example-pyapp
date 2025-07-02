@@ -407,3 +407,4 @@ $RECYCLE.BIN/
 ### Custom
 tmp/
 .tufup-repo-config
+src/application/_version.py

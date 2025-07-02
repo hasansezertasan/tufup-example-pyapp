@@ -10,6 +10,7 @@ from application.config import (
     APP_VERSION,
     SERVER_KEYS_DIR,
     SERVER_REPO_DIR,
+    config_path,
 )
 
 from tufup.repo import DEFAULT_KEY_MAP
@@ -64,6 +65,21 @@ def info():
 
 
 @app.command(
+    name="config",
+    help="Create the config file if it does not exist and display it's path.",
+)
+def config():
+    """
+    Create the config file if it does not exist and display it's path.
+    """
+    if not config_path.exists():
+        sample_config_path = Path().cwd() / "sample.config.json"
+        config_path.write_text(sample_config_path.read_text())
+
+    typer.echo(f"'{config_path}'")
+
+
+@app.command(
     name="version-file",
     help="Generate a version file for the application.",
 )
@@ -109,6 +125,8 @@ def repo_init():
     # Initialize repository (creates keys and root metadata, if necessary)
     repo.initialize()
 
+    typer.echo(f"Initialized repository: {SERVER_REPO_DIR}")
+
 
 @app.command(
     name="repo-add-bundle",
@@ -119,7 +137,7 @@ def repo_add_bundle(bundle_dist_dir: Path = typer.Option()):
     try:
         bundle_dirs = [path for path in bundle_dist_dir.iterdir() if path.is_dir()]
     except FileNotFoundError:
-        sys.exit(f"Directory not found: {bundle_dist_dir}\nDid you run pyinstaller?")
+        sys.exit(f"Directory not found: {bundle_dist_dir}\nDid you build the bundle?")
     if len(bundle_dirs) != 1:
         sys.exit(f"Expected one bundle, found {len(bundle_dirs)}.")
     bundle_dir = bundle_dirs[0]
@@ -133,7 +151,7 @@ def repo_add_bundle(bundle_dist_dir: Path = typer.Option()):
     repo.add_bundle(new_bundle_dir=bundle_dir, skip_patch=True)
     repo.publish_changes(private_key_dirs=[SERVER_KEYS_DIR])
 
-    typer.echo("Done.")
+    typer.echo(f"Added bundle: {bundle_dir}")
 
 
 if __name__ == "__main__":

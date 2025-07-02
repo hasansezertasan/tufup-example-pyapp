@@ -4,6 +4,7 @@ ENV = "development"
 APP_DEBUG = true
 APP_NAME = "application"
 APP_SPEC = "{{ [config_root] | concat(with='main.spec') | join_path }}"
+# VCS_TAG = """{{ exec(command='git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0"') }}"""
 APP_VERSION = "{{ get_env(name='APP_VERSION', default='0.0.0') }}"
 KEY_NAME = "application_key"
 TEMP_DIR = "{{ [config_root] | concat(with='tmp') | join_path }}"
@@ -26,7 +27,7 @@ PYAPP_BUILD_DIR = "{{ [env.TEMP_DIR] | concat(with='pyapp') | concat(with='build
 PYINSTALLER_DIST_DIR = "{{ [env.TEMP_DIR] | concat(with='pyinstaller') | concat(with='dist') | join_path }}"
 PYINSTALLER_BUILD_DIR = "{{ [env.TEMP_DIR] | concat(with='pyinstaller') | concat(with='build') | join_path }}"
 INSTALL_DIR_MOCK_APP = "{{ [env.INSTALL_DIR] | concat(with='main') | join_path }}"
-# VCS_TAG = """{{ exec(command='git describe --tags --abbrev=0 2>/dev/null || echo "No tags found"') }}"""
+# TEST = """{% if os() != "windows" %}Not Windows{% elif os() == "windows" %}Windows!{% endif %}"""
 
 
 [tools]
@@ -136,7 +137,7 @@ run = "uv run manager repo-init"
 [tasks."repo:add"]
 description = "Add Application Bundle to the repository"
 run = "uv run manager repo-add-bundle --bundle-dist-dir $PYINSTALLER_DIST_DIR"
-# uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR/main $SERVER_KEYS_DIR
+# uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR/main $SERVER_KEYS_DIR --skip-patch
 
 
 [tasks."repo:sync-trusted-root"]
