@@ -1,14 +1,11 @@
 import logging
-import os
 import pathlib
+import os
 import sys
 from importlib.metadata import version
 
 from platformdirs import PlatformDirs
-from tufup.utils.platform_specific import ON_MAC, ON_WINDOWS
 from tufup.repo import (
-    DEFAULT_REPO_DIR_NAME,
-    DEFAULT_KEYS_DIR_NAME,
     DEFAULT_META_DIR_NAME,
     DEFAULT_TARGETS_DIR_NAME,
 )
@@ -31,8 +28,8 @@ The directories are created if they do not exist.
 
 ## Mappings
 
-| Platform         | Short            | Long                                      | Platformdirs Shorthand |
-| ---------------- | ---------------- | ----------------------------------------- | ---------------------  |
+| Platform         | Short            | Long                                       | Platformdirs Shorthand |
+| ---------------- | ---------------- | ------------------------------------------ | ---------------------  |
 | Windows (10, 11) | `%APPDATA%`.     | `C:\\Users\hasansezertasan\AppData\Roaming`| `.roaming`             |
 | Windows (10, 11) | `%LOCALAPPDATA%` | `C:\\Users\hasansezertasan\AppData\Local`  | `.local`               |
 | Windows (10)     | `%PROGRAMDATA%`  | `C:\\ProgramData`                          | `.common`              |
@@ -58,7 +55,7 @@ Example:
 
 """
 
-config_path: pathlib.Path = dirs.user_data_path / "config.json"
+CONFIG_DIR: pathlib.Path = dirs.user_data_path / "config.json"
 """Path to the configuration file."""
 
 
@@ -74,7 +71,7 @@ class Settings(BaseSettings):
         title="Target server base URL",
     )
 
-    model_config = SettingsConfigDict(json_file=config_path)
+    model_config = SettingsConfigDict(json_file=CONFIG_DIR)
 
     @classmethod
     def settings_customise_sources(
@@ -102,43 +99,28 @@ METADATA_BASE_URL = "http://localhost:8000/metadata/"
 TARGET_BASE_URL = "http://localhost:8000/targets/"
 
 
-ROOT_DIR = pathlib.Path.cwd()
-"""Root directory of the application."""
-
 # Are we running in a PyInstaller bundle?
 # https://pyinstaller.org/en/stable/runtime-information.html
 FROZEN = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 """True if the application is running in a PyInstaller bundle."""
+ROOT_DIR = (
+    pathlib.Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else pathlib.Path.cwd()
+)
+"""Root directory of the application."""
+EXECUTABLE_DIR = pathlib.Path(sys.executable).parent if FROZEN else ROOT_DIR
+"""
+Directory where the executable is located.
+
+`pathlib.Path(sys.executable)` gives the path to the executable, all the time!
+Pyinstaller datas are not reachable by this way, use pathlib.Path(sys._MEIPASS) instead
+"""
+
 
 # App directories
-if DEBUG:
-    TEMP_DIR = ROOT_DIR / "tmp"
-    DATA_DIR = TEMP_DIR / "Library"
-    PROGRAMS_DIR = TEMP_DIR / "Applications"
-elif ON_WINDOWS:
-    DATA_DIR = dirs.user_data_path
-    PROGRAMS_DIR = DATA_DIR / "Programs"
-elif ON_MAC:
-    DATA_DIR = pathlib.Path.home() / "Library"
-    PROGRAMS_DIR = pathlib.Path.home() / "Applications"
-else:
-    raise NotImplementedError("Unsupported platform")
-
-INSTALL_DIR = PROGRAMS_DIR / APP_NAME
-UPDATE_CACHE_DIR = DATA_DIR / APP_NAME / "update_cache"
+DATA_DIR = dirs.user_data_path
+INSTALL_DIR = pathlib.Path(sys.executable).parent if FROZEN else ROOT_DIR
+UPDATE_CACHE_DIR = DATA_DIR / "update_cache"
 METADATA_DIR = UPDATE_CACHE_DIR / DEFAULT_META_DIR_NAME
 TARGET_DIR = UPDATE_CACHE_DIR / DEFAULT_TARGETS_DIR_NAME
 TRUSTED_ROOT_SRC = ROOT_DIR / "root.json"
 TRUSTED_ROOT_DST = METADATA_DIR / "root.json"
-
-# For development
-if DEBUG:
-    TEMP_DIR = ROOT_DIR / "tmp"
-    SERVER_DIR = TEMP_DIR / "server"
-    SERVER_KEYS_DIR = SERVER_DIR / DEFAULT_KEYS_DIR_NAME
-    """Directory where the keys are stored. This should be offline and secure."""
-    SERVER_REPO_DIR = SERVER_DIR / DEFAULT_REPO_DIR_NAME
-    """Directory where the repository metadata is stored. This can be online."""
-    SERVER_METADATA_DIR = SERVER_REPO_DIR / DEFAULT_META_DIR_NAME
-    SERVER_TARGET_DIR = SERVER_REPO_DIR / DEFAULT_TARGETS_DIR_NAME
-    TRUSTED_ROOT_SRC = SERVER_METADATA_DIR / "root.json"

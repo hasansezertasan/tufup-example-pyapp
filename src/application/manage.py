@@ -1,31 +1,32 @@
 import typer
 import logging
-import sys
 from pathlib import Path
+from importlib.metadata import version
 
 from tufup.repo import Repository
-
+from tufup.repo import (
+    DEFAULT_REPO_DIR_NAME,
+    DEFAULT_KEYS_DIR_NAME,
+)
 from application.config import (
     APP_NAME,
-    APP_VERSION,
-    SERVER_KEYS_DIR,
-    SERVER_REPO_DIR,
-    config_path,
+    CONFIG_DIR,
 )
 
 from tufup.repo import DEFAULT_KEY_MAP
 import os
-import pyinstaller_versionfile
 
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-# For development
-
 # Key settings
+ROOT_DIR = Path.cwd()
+TEMP_DIR = ROOT_DIR / "tmp"
 KEY_NAME = os.getenv("KEY_NAME", "application_key")
-PRIVATE_KEY_PATH = SERVER_KEYS_DIR / KEY_NAME
+SERVER_DIR = TEMP_DIR / "server"
+SERVER_KEYS_DIR = SERVER_DIR / DEFAULT_KEYS_DIR_NAME
+SERVER_REPO_DIR = SERVER_DIR / DEFAULT_REPO_DIR_NAME
 KEY_MAP = {role_name: [KEY_NAME] for role_name in DEFAULT_KEY_MAP.keys()}
 ENCRYPTED_KEYS: list = []
 THRESHOLDS: dict = dict(root=1, targets=1, snapshot=1, timestamp=1)
@@ -47,8 +48,7 @@ def version_():
     """
     Display the version of application.
     """
-
-    typer.echo(f"Application Version {APP_VERSION}")
+    typer.echo(f"Application Version {version('application')}")
 
 
 @app.command(
@@ -61,7 +61,7 @@ def info():
     """
 
     typer.echo(f"Application Name: {APP_NAME}")
-    typer.echo(f"Version: {APP_VERSION}")
+    typer.echo(f"Version: {version('application')}")
 
 
 @app.command(
@@ -72,11 +72,11 @@ def config():
     """
     Create the config file if it does not exist and display it's path.
     """
-    if not config_path.exists():
-        sample_config_path = Path().cwd() / "sample.config.json"
-        config_path.write_text(sample_config_path.read_text())
+    if not CONFIG_DIR.exists():
+        sample_CONFIG_DIR = Path().cwd() / "sample.config.json"
+        CONFIG_DIR.write_text(sample_CONFIG_DIR.read_text())
 
-    typer.echo(f"'{config_path}'")
+    typer.echo(f"`{CONFIG_DIR}`")
 
 
 @app.command(
@@ -88,10 +88,11 @@ def version_file():
     Generate a version file for the application.
     This is used by PyInstaller to embed the version in the binary.
     """
+    import pyinstaller_versionfile
 
     pyinstaller_versionfile.create_versionfile(
         output_file="version.txt",
-        version=APP_VERSION,
+        version=version("application"),
         company_name="My Imaginary Company",
         file_description="Application",
         internal_name="Application",
@@ -110,7 +111,7 @@ def repo_init():
     # Create repository instance
     repo = Repository(
         app_name=APP_NAME,
-        app_version_attr="application.__about__.__version__",
+        # app_version_attr="application._version.__version__",
         repo_dir=SERVER_REPO_DIR,
         keys_dir=SERVER_KEYS_DIR,
         key_map=KEY_MAP,
@@ -126,32 +127,6 @@ def repo_init():
     repo.initialize()
 
     typer.echo(f"Initialized repository: {SERVER_REPO_DIR}")
-
-
-@app.command(
-    name="repo-add-bundle",
-    help="Add a new app bundle to the repository.",
-)
-def repo_add_bundle(bundle_dist_dir: Path = typer.Option()):
-    """Create archive from latest bundle and add to repository."""
-    try:
-        bundle_dirs = [path for path in bundle_dist_dir.iterdir() if path.is_dir()]
-    except FileNotFoundError:
-        sys.exit(f"Directory not found: {bundle_dist_dir}\nDid you build the bundle?")
-    if len(bundle_dirs) != 1:
-        sys.exit(f"Expected one bundle, found {len(bundle_dirs)}.")
-    bundle_dir = bundle_dirs[0]
-    typer.echo(f"Adding bundle: {bundle_dir}")
-
-    # Create repository instance from config file (assuming the repository
-    # has already been initialized)
-    repo = Repository.from_config()
-
-    # Add new app bundle to repository (automatically reads application.__version__)
-    repo.add_bundle(new_bundle_dir=bundle_dir, skip_patch=True)
-    repo.publish_changes(private_key_dirs=[SERVER_KEYS_DIR])
-
-    typer.echo(f"Added bundle: {bundle_dir}")
 
 
 if __name__ == "__main__":

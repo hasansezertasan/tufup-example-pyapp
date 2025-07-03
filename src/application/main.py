@@ -1,6 +1,8 @@
 import typer
 import logging
 import sys
+import shutil
+import pathlib
 from tufup.client import Client
 from . import config
 
@@ -15,12 +17,29 @@ def progress_hook(bytes_downloaded: int, bytes_expected: int):
 
 
 def callback():
+    # The app must ensure dirs exist
     for dir_path in [
         config.INSTALL_DIR,
         config.METADATA_DIR,
         config.TARGET_DIR,
     ]:
-        dir_path.mkdir(exist_ok=True, parents=True)
+        if not dir_path.exists():
+            logger.info(f"Creating directory: {dir_path}")
+            dir_path.mkdir(parents=True, exist_ok=True)
+
+    # The app must be shipped with a trusted "root.json" metadata file,
+    # which is created using the tufup.repo tools. The app must ensure
+    # this file can be found in the specified metadata_dir. The root metadata
+    # file lists all trusted keys and TUF roles.
+    if not config.TRUSTED_ROOT_DST.exists():
+        typer.echo(
+            f"Trusted root metadata file not found in cache: {config.TRUSTED_ROOT_DST}. "
+        )
+        if not config.TRUSTED_ROOT_SRC.exists():
+            sys.exit(f"Trusted root metadata file not found: {config.TRUSTED_ROOT_SRC}")
+        shutil.copy(src=config.TRUSTED_ROOT_SRC, dst=config.TRUSTED_ROOT_DST)
+        typer.echo("Trusted root metadata copied to cache.")
+
     client = Client(
         app_name=config.APP_NAME,
         app_install_dir=config.INSTALL_DIR,

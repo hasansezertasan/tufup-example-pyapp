@@ -49,14 +49,14 @@ jobs:
         run: |
           export APP_VERSION=1.0.0
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
-          uv run hatch version $APP_VERSION
+          export SETUPTOOLS_SCM_PRETEND_VERSION=$APP_VERSION
           uv sync --reinstall-package application
       - name: Create v1.0.0 bundle
         shell: bash
         run: mise run build:pyinstaller
       - name: Add v1.0.0 to the repository
         shell: bash
-        run: mise run repo:add
+        run: uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR $SERVER_KEYS_DIR --skip-patch
       - name: Mock install v1.0.0
         shell: bash
         run: mise run mock:install
@@ -68,14 +68,14 @@ jobs:
         run: |
           export APP_VERSION=2.0.0
           echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
-          uv run hatch version $APP_VERSION
+          export SETUPTOOLS_SCM_PRETEND_VERSION=$APP_VERSION
           uv sync --reinstall-package application
       - name: Create v2.0.0 bundle
         shell: bash
         run: mise run build:pyinstaller
       - name: Add v2.0.0 to the repository
         shell: bash
-        run: mise run repo:add
+        run: uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR $SERVER_KEYS_DIR --skip-patch
       - name: Run update server and update from v1.0.0 to v2.0.0
         shell: bash
         run: |
@@ -84,24 +84,3 @@ jobs:
       - name: Verify v2.0.0 installation
         shell: bash
         run: mise run build:verify
-    # - name: Mock develop v3.0.0
-    #   shell: bash
-    #   run: |
-    #     export APP_VERSION=3.0.0
-    #     echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
-    #     uv run hatch version $APP_VERSION
-    #     uv sync --reinstall-package application
-    # - name: Create v3.0.0 bundle
-    #   shell: bash
-    #   run: mise run build:pyinstaller
-    # - name: Add v3.0.0 to the repository
-    #   shell: bash
-    #   run: mise run repo:add
-    # - name: Run update server and update from v1.0.0 to v3.0.0
-    #   shell: bash
-    #   run: |
-    #     mise run repo:serve
-    #     mise run build:check
-    # - name: Verify v3.0.0 installation
-    #   shell: bash
-    #   run: mise run build:verify

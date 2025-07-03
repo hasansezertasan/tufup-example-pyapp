@@ -50,10 +50,10 @@ Note: If you use the CLI, see `repo_settings.py` for sensible values.
 
 1. Run `mise run repo:init` (CLI: `tufup init`)
 1. Run `mise run build:pyinstaller` (note that our `main.spec` ensures that the latest `root.json` metadata file is included in the bundle)
-1. Run `mise run repo:add` (CLI: `tufup targets add 1.0 tmp/application/dist/main tmp/application/keystore`)
+1. Run `uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR $SERVER_KEYS_DIR --skip-patch`
 1. Modify the app, and/or increment `APP_VERSION` in `application/settings.py`
 1. Run the `mise run build:pyinstaller` again
-1. Run `mise run repo:add` again (CLI: `tufup targets add 2.0 tmp/application/dist tmp/application/keystore`)
+1. Modify the app, and/or increment `APP_VERSION` in `application/settings.py`
 
 Note: When adding a bundle, `tufup` creates a patch by default, which can take quite some time.
 

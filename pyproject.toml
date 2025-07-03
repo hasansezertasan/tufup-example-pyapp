@@ -14,6 +14,7 @@ dependencies = [
     "typer>=0.16.0",
 ]
 
+
 [dependency-groups]
 dev = [
     "python-dotenv>=1.1.1",
@@ -22,13 +23,20 @@ dev = [
     "pyinstaller-versionfile>=3.0.1",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.version]
-path = "src/application/__about__.py"
 
 [project.scripts]
 application = "application.main:app"
 manager = "application.manage:app"
+
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch.version]
+source = "vcs"
+
+
+[tool.hatch.build]
+hooks.vcs.version-file = "src/application/_version.py"
