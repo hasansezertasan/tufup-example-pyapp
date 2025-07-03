@@ -56,7 +56,7 @@ jobs:
         run: mise run build:pyinstaller
       - name: Add v1.0.0 to the repository
         shell: bash
-        run: uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR $SERVER_KEYS_DIR --skip-patch
+        run: mise run repo:add
       - name: Mock install v1.0.0
         shell: bash
         run: mise run mock:install
@@ -75,7 +75,7 @@ jobs:
         run: mise run build:pyinstaller
       - name: Add v2.0.0 to the repository
         shell: bash
-        run: uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR $SERVER_KEYS_DIR --skip-patch
+        run: mise run repo:add
       - name: Run update server and update from v1.0.0 to v2.0.0
         shell: bash
         run: |

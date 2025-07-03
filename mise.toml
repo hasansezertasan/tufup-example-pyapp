@@ -141,6 +141,12 @@ shell = "bash -c"
 run = "uv run manager repo-init"                                    # uv run tufup init
 
 
+[tasks."repo:add"]
+description = "Add a target to the Tufup Repository"
+shell = "bash -c"
+run = "uv run tufup targets add $APP_VERSION $PYINSTALLER_DIST_DIR $SERVER_KEYS_DIR --skip-patch"
+
+
 [tasks."repo:serve"]
 description = "Run the HTTP server"
 shell = "bash -c"
