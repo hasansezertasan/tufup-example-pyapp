@@ -2,7 +2,6 @@ import typer
 import logging
 import sys
 import shutil
-import pathlib
 from tufup.client import Client
 from . import config
 
